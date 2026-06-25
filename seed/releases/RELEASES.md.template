@@ -1,0 +1,25 @@
+# Releases
+
+> This file is yours (project-owned). It is the live release timeline.
+> `/release-add` appends to the top "🚧 Next" entry as work merges to
+> `main`; `/release` stamps it ✅ Shipped and opens the next one. Don't
+> maintain it by hand. Format reference: `.claude/release-rules.md`.
+
+🚧 v0.1.0  ◆  next release — accumulating since the project's first tag
+
+(nothing yet)
+
+---
+
+<!--
+Shipped entries land below as you cut releases, newest first. Each looks
+like:
+
+✅ v0.1.0  ◆  <release theme — one line>
+              shipped <YYYY-MM-DD> · tag v0.1.0 · sha <short-sha>
+
+- TASK-001 — <title>
+- TASK-002 — <title>
+
+---
+-->

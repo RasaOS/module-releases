@@ -1,0 +1,116 @@
+# Release-Gate
+
+**This file is yours.** `rasa.module.releases` ships the portable release
+lifecycle (`.claude/release-rules.md` + the `/release` skills), but it
+deliberately does not decide the two things that vary per project:
+
+1. **What makes a release shippable** — which checks must be green, and
+2. **How this project actually deploys** — the deploy command + tag model.
+
+This file is where you define both. `/release` reads it at pre-flight and
+hard-stops if a required check fails or the deploy command is missing.
+
+A release is cut only when **every readiness check below passes** and the
+**deploy command runs clean**. Each check must be **objectively
+checkable** — a command that exits zero, a named approval — never a
+feeling. Never bypass a check to ship faster.
+
+---
+
+## Readiness checks (EDIT THIS)
+
+> Replace the defaults with your project's real checks. Until you do, the
+> minimum honest bar applies: a clean tree, a green test command, and a
+> human sign-off. Running on the default is a smell, not a destination.
+
+- [ ] **Clean tree** — `git status --porcelain` is empty.
+- [ ] **Tests green** — `<your test command>` exits 0.
+- [ ] **Build clean** — `<your build command>` exits 0 (warnings fatal? y/n).
+- [ ] **Dependency audit** — `<your audit command>` shows no new HIGH/CRITICAL.
+- [ ] **Approval** — the release closer has reviewed and approved.
+
+---
+
+## Deploy command (EDIT THIS — REQUIRED)
+
+> `/release` hard-stops if this is unset. Guessing prod commands is the
+> one inference the skill refuses to make.
+
+```sh
+# How this project ships to production. One of:
+#
+#   # (a) delegate to the pipelines module, if mounted:
+#   bash build/stages/50-deploy.sh --env prod
+#
+#   # (b) a raw project command:
+#   npm run deploy            # web
+#   fastlane release          # ios
+#   ./deploy.sh prod          # bespoke
+#
+DEPLOY_CMD="<fill me in>"
+```
+
+## Tag model (EDIT THIS)
+
+```sh
+# Plain semver is the default:
+TAG="vX.Y.Z"
+#
+# To stamp the commit + environment into the tag, define a helper that
+# emits e.g. v1.2.0-9f3a1c7-prod. If the pipelines module is mounted, use
+# its environment helper; otherwise:
+# TAG="vX.Y.Z-$(git rev-parse --short HEAD)-prod"
+```
+
+## Rollback command (EDIT THIS)
+
+```sh
+# Reverts the live build. Does NOT move git tags (see release-rules.md →
+# Rollback semantics). Example:
+#   firebase hosting:rollback
+ROLLBACK_CMD="<fill me in>"
+```
+
+---
+
+## Examples — delete the ones you don't need
+
+> Pick the block that matches your stack, paste it above, and tune it.
+
+### Web (Firebase / Vercel / static)
+
+```markdown
+- [ ] Tests — `npm test` exits 0.
+- [ ] Build — `npm run build` clean (warnings fatal).
+- [ ] Audit — `npm audit --audit-level=high` clean.
+DEPLOY_CMD="npm run deploy:prod"
+ROLLBACK_CMD="firebase hosting:rollback"
+```
+
+### iOS (Xcode / fastlane)
+
+```markdown
+- [ ] Tests — `xcodebuild test -scheme App` exits 0.
+- [ ] Build — `xcodebuild -scheme App -config Release` clean.
+DEPLOY_CMD="fastlane release"
+TAG="vX.Y.Z-$(git rev-parse --short HEAD)-appstore"
+```
+
+### Container / Kubernetes
+
+```markdown
+- [ ] Tests — `make test` exits 0.
+- [ ] Image — `tests/container/greenlight.sh` passes (validate + run-local).
+DEPLOY_CMD="bash build/stages/50-deploy.sh --env prod"   # pipelines module
+ROLLBACK_CMD="kubectl rollout undo deploy/<app>"
+```
+
+---
+
+## Note on co-mounted modules
+
+If `rasa.module.pipelines` is mounted, prefer pointing `DEPLOY_CMD` at its
+deploy stage rather than duplicating the command here — one source of
+truth for "how we ship." If `rasa.module.tests` is mounted, your "tests
+green" check can run a named suite (`tests/suites/prod-gate.md`) instead
+of a raw command.

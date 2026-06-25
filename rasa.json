@@ -1,0 +1,87 @@
+{
+  "$schema": "https://rasa-os.github.io/schema/rasa.schema.v1.json",
+  "contract_version": "1.3.0",
+  "name": "rasa.module.releases",
+  "version": "0.1.0",
+  "kind": "module",
+  "aliases": [
+    "module-releases"
+  ],
+  "description": "Portable release-management lifecycle (track → version → tag → ship → record), mountable into any domain or orchestrator. Distilled from rasa.domain.code; the one thing that varies per project — what makes a release shippable and how it actually deploys — is delegated to a project-owned .claude/release-gate.md.",
+  "source": {
+    "repo": "https://github.com/RasaOS/module-releases",
+    "branch": "main"
+  },
+  "tier": "Pro",
+  "capabilities": [
+    "release.lifecycle-orchestration",
+    "release.version-management",
+    "release.tracking",
+    "release.hotfix-path"
+  ],
+  "permissions": [
+    "fs:write",
+    "shell:exec"
+  ],
+  "requires": {
+    "parent_kind": [
+      "domain",
+      "orchestrator"
+    ]
+  },
+  "rasa": {
+    "role": "L1-mountable-capability",
+    "shape_pattern": "toolkit",
+    "note": "Engineering-scoped release module (companion to rasa.module.tasks). Ships the portable release spine — semver heuristic, the RELEASES.md timeline tracker, annotated-tag discipline, the hotfix path, dependency-audit cadence — all Element-owned. The two genuinely per-project concerns — (1) what 'shippable' requires, (2) how this project deploys — live in a project-owned .claude/release-gate.md (seeded skip-if-exists), the release analogue of module.tasks' done-gate. Cross-module references (TASK-NNN ids in the tracker, a deploy pipeline, the audit ledger) are SOFT: present-if-mounted, graceful-if-absent."
+  },
+  "element": {
+    "description": "Element-owned release files mirrored into the install target's .claude/ per canon ELEMENT_CONTRACT.md §7. Refreshed on Element upgrade. The release-gate and the RELEASES.md tracker are NOT here — they are project-owned (see seed.files).",
+    "files": [
+      {
+        "from": "content/release-rules.md",
+        "to": ".claude/release-rules.md",
+        "policy": "file-replace",
+        "note": "The portable release spine: RELEASES.md tracker format + lifecycle, version-bump heuristic, annotated-tag format, the hotfix path, dependency hygiene. Element-owned; refreshed on upgrade. References .claude/release-gate.md for the deploy command + readiness contract — it hardcodes neither."
+      },
+      {
+        "from": "content/skills/",
+        "to": ".claude/skills/",
+        "policy": "directory-mirror",
+        "note": "Release skills: /release (cut a release end-to-end), /release-add (append to the next-release entry), /releases (read+render the tracker). Element-owned; refreshed on upgrade."
+      },
+      {
+        "from": "content/README.md",
+        "to": "content/README.md",
+        "policy": "opt-in",
+        "note": "Describes what this module ships and how it installs. Fork/author-time doc; not installed into consumer projects."
+      }
+    ]
+  },
+  "seed": {
+    "description": "One-time, project-owned files copied at install only (skip-if-exists), per canon ELEMENT_CONTRACT.md §7. These belong to the consuming project after install and are never overwritten on Element upgrade — the project's release-gate and its live release tracker.",
+    "files": [
+      {
+        "from": "seed/release-gate.md.template",
+        "to": ".claude/release-gate.md",
+        "policy": "skip-if-exists",
+        "note": "The per-project release adapter — what must be true to cut a release (tests green, build clean, audit clean, approval) AND how this project actually deploys (the deploy command / env+tag model). Project-owned; the project fills it. If rasa.module.pipelines is also mounted, the deploy command points at its 50-deploy stage. Ships with a minimum-honest default + commented examples. Placeholder-free per the documented skip-if-exists policy gap."
+      },
+      {
+        "from": "seed/releases/RELEASES.md.template",
+        "to": "releases/RELEASES.md",
+        "policy": "skip-if-exists",
+        "note": "The live release timeline: one '🚧 Next' accumulator at the top, '✅ Shipped' entries below stamped with date+tag+sha. Project-owned; /release-add appends, /release stamps. Task-id bullets (TASK-NNN) are a soft reference to rasa.module.tasks — freeform descriptions work fine without it."
+      },
+      {
+        "from": "seed/rasa.lock.json.template",
+        "to": ".claude/rasa.lock.json",
+        "policy": "init-only-with-sha",
+        "note": "Stamped with the Element HEAD commit SHA at init time. Lockfile shape per canon Spec §6 (Connection Contract). When co-installed under a parent that also stamps a lockfile, the parent's is authoritative (single-writer-per-path, Lock L-004); in the kernel pull model each Element gets its own holding folder, so no collision. Substitutes the standard {{ELEMENT_*}} / {{TODAY}} placeholders via bin/init."
+      }
+    ]
+  },
+  "scaffold": {
+    "description": "Empty directories created at init by the declarative installer. The releases/ ledger ships as a seed template instead (bin/init does not implement scaffold.directories), so this stays empty.",
+    "directories": []
+  }
+}
